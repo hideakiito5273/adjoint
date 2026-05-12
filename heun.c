@@ -324,7 +324,7 @@ static void write_grad_x0_dat(double omega_fixed, int N)
 
     FILE *fp = fopen("grad_x0_heun.dat", "w");
     fprintf(fp, "# omega=%.2f  N=%d  h=%.2e\n", omega_fixed, N, h);
-    fprintf(fp, "# x0  grad_analytical  grad_symplectic_implicit\n");
+    fprintf(fp, "# x0  grad_analytical  grad_heun_adjoint\n");
 
     int    n_pts = 200;
     double x0_lo = -5.0, x0_hi = 5.0;
@@ -351,9 +351,9 @@ static void write_converge_dat(double omega_fixed)
 
     FILE *fp = fopen("converge_heun.dat", "w");
     fprintf(fp, "# omega=%.4f  eval at x0=%.4f\n", omega_fixed, X0);
-    fprintf(fp, "# h  relerr_symplectic_implicit\n");
+    fprintf(fp, "# h  relerr_symplectic_adjoint\n");
 
-    printf("\nConvergence test (grad w.r.t. x0, symplectic implicit adjoint):\n");
+    printf("\nConvergence test (grad w.r.t. x0, Heun adjoint):\n");
     printf("  %-8s  %-10s  %-14s\n", "N", "h", "rel_err");
 
     for (int i = 0; i < n; i++) {
