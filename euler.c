@@ -241,7 +241,8 @@ static void write_grad_x0_dat(double omega_fixed, int N)
     double h = T_END / N;
     double *x_obs = (double*)malloc(sizeof(double) * (N + 1));
     for (int k = 0; k <= N; k++)
-        x_obs[k] = x_exact(k*h, OMEGA);
+        // x_obs[k] = x_exact(k*h, OMEGA);
+        x_obs[k] = x_exact_with_init(k*h, 1.5, V0, OMEGA);
 
     FILE *fp = fopen("grad_x0_euler.dat", "w");
     fprintf(fp, "# omega=%.2f  N=%d  h=%.2e\n", omega_fixed, N, h);
@@ -303,7 +304,7 @@ static void write_converge_dat(double omega_fixed)
  * ================================================================ */
 int main(void)
 {
-    write_grad_x0_dat(1.5, 2000);
+    write_grad_x0_dat(OMEGA, 2000);
     write_converge_dat(1.5);
     verify_invariant(1.5, T_END / 1000.0, 1000, "invariant_euler.dat");
     return 0;

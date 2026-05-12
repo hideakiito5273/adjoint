@@ -319,7 +319,8 @@ static void write_grad_x0_dat(double omega_fixed, int N)
     double h = T_END / N;
     double *x_obs = (double*)malloc(sizeof(double) * (N + 1));
     for (int k = 0; k <= N; k++)
-        x_obs[k] = x_exact(k*h, OMEGA);
+        // x_obs[k] = x_exact(k*h, OMEGA);
+        x_obs[k] = x_exact_with_init(k*h, 1.5, V0, OMEGA);
 
     FILE *fp = fopen("grad_x0_heun.dat", "w");
     fprintf(fp, "# omega=%.2f  N=%d  h=%.2e\n", omega_fixed, N, h);
