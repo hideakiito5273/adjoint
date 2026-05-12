@@ -58,14 +58,6 @@ static double dx_dx0_analytical(double t, double omega)
     return e * (cos(wd*t) + (ZETA*omega)/wd * sin(wd*t));
 }
 
-/* d x(t) / d v0  (analytical) */
-static double dx_dv0_analytical(double t, double omega)
-{
-    double sq = sqrt(1.0 - ZETA*ZETA);
-    double wd = omega * sq;
-    double e  = exp(-ZETA*omega*t);
-    return e * (1.0/wd * sin(wd*t));
-}
 
 /* dC/dx0  (analytical reference) */
 static double grad_x0_analytical(double omega, double h, int N,
@@ -162,19 +154,15 @@ static double grad_euler_adjoint(double x0_val, double v0_val,
         df_du_at(&U[2*k], omega, A);
 
         /*
-         * Build M = I + h*A^T
-         * A^T swaps off-diagonal: (A^T)_ij = A_ji
-         *   M = [ 1 + h*A[0],   h*A[2] ]
-         *       [     h*A[1],  1+h*A[3] ]
+         * Forward Euler transition: J = I + h*A
+         * Symplectic adjoint applies J^T explicitly:
+         *   lambda_{k-1} = J^T * lambda_k = (I + h*A^T) * lambda_k
+         *
+         * A^T row-major: (A^T)_00=A[0], (A^T)_01=A[2], (A^T)_10=A[1], (A^T)_11=A[3]
          */
-        double M[4] = {
-            1.0 + h*A[0],  h*A[2],
-                  h*A[1],  1.0 + h*A[3]
-        };
-
-        /* Solve (I + h*A^T) * lambda_{k-1} = lambda_k */
         double l_prev[2];
-        solve_2x2(M, lam, l_prev);
+        l_prev[0] = (1.0 + h*A[0])*lam[0] +        h*A[2] *lam[1];
+        l_prev[1] =        h*A[1] *lam[0] + (1.0 + h*A[3])*lam[1];
 
         lam[0] = l_prev[0];
         lam[1] = l_prev[1];
@@ -230,15 +218,12 @@ static void verify_invariant(double omega, double h, int N,
 
         if (k == 0) break;
 
-        /* Adjoint update: solve (I + h*A^T) * lambda_{k-1} = lambda_k */
+        /* Adjoint update: lambda_{k-1} = J^T * lambda_k = (I + h*A^T) * lambda_k */
         double A[4];
         df_du_at(&U[2*(k-1)], omega, A);
-        double M[4] = {
-            1.0 + h*A[0],  h*A[2],
-                  h*A[1],  1.0 + h*A[3]
-        };
         double l_prev[2];
-        solve_2x2(M, lam, l_prev);
+        l_prev[0] = (1.0 + h*A[0])*lam[0] +        h*A[2] *lam[1];
+        l_prev[1] =        h*A[1] *lam[0] + (1.0 + h*A[3])*lam[1];
         lam[0] = l_prev[0];
         lam[1] = l_prev[1];
     }

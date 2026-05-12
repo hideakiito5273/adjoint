@@ -110,20 +110,6 @@ static void df_du_at(const double u[2], double omega, double A[4])
 }
 
 /* ================================================================
- * Utility: solve 2x2 linear system  M*x = b  (Cramer's rule)
- * ================================================================ */
-static void solve_2x2(const double M[4], const double b[2], double x[2])
-{
-    double det = M[0]*M[3] - M[1]*M[2];
-    if (fabs(det) < 1e-15) {
-        x[0] = b[0]; x[1] = b[1];
-        return;
-    }
-    x[0] = ( M[3]*b[0] - M[1]*b[1]) / det;
-    x[1] = (-M[2]*b[0] + M[0]*b[1]) / det;
-}
-
-/* ================================================================
  * Heun (explicit RK2) forward step
  * ================================================================ */
 static void heun_step(const double u[2], double omega, double h,
@@ -217,23 +203,23 @@ static double grad_symplectic_implicit(double x0_val, double v0_val,
         df_du_at(u_star, omega, A2);
 
         /*
-         * Symplectic adjoint matrix:
-         *   M = I - (h/2)*(A1^T + A2^T) + (h^2/2)*(A1^T * A2^T)
+         * Symplectic adjoint: apply J^T explicitly.
          *
-         * A^T swaps off-diagonal: (A^T)_ij = A_ji.
-         * Concretely for A stored as {A00,A01,A10,A11}:
-         *   A^T = {A[0], A[2], A[1], A[3]}
+         * J  = I + (h/2)*(A1+A2)     + (h^2/2)*(A2*A1)
+         * J^T= I + (h/2)*(A1^T+A2^T) + (h^2/2)*(A1^T*A2^T)
+         *
+         * A^T row-major: (A^T)_00=A[0], (A^T)_01=A[2], (A^T)_10=A[1], (A^T)_11=A[3]
          */
         double h2 = 0.5*h, h2_2 = 0.5*h*h;
-        double M[4];
-        M[0] = 1.0 - h2*(A1[0]+A2[0]) + h2_2*(A1[0]*A2[0] + A1[2]*A2[1]);
-        M[1] =     - h2*(A1[2]+A2[2]) + h2_2*(A1[0]*A2[2] + A1[2]*A2[3]);
-        M[2] =     - h2*(A1[1]+A2[1]) + h2_2*(A1[1]*A2[0] + A1[3]*A2[1]);
-        M[3] = 1.0 - h2*(A1[3]+A2[3]) + h2_2*(A1[1]*A2[2] + A1[3]*A2[3]);
+        double JT[4];
+        JT[0] = 1.0 + h2*(A1[0]+A2[0]) + h2_2*(A1[0]*A2[0] + A1[2]*A2[1]);
+        JT[1] =       h2*(A1[2]+A2[2]) + h2_2*(A1[0]*A2[2] + A1[2]*A2[3]);
+        JT[2] =       h2*(A1[1]+A2[1]) + h2_2*(A1[1]*A2[0] + A1[3]*A2[1]);
+        JT[3] = 1.0 + h2*(A1[3]+A2[3]) + h2_2*(A1[1]*A2[2] + A1[3]*A2[3]);
 
-        /* Solve M * lambda_{k-1} = lambda_k */
         double l_prev[2];
-        solve_2x2(M, lam, l_prev);
+        l_prev[0] = JT[0]*lam[0] + JT[1]*lam[1];
+        l_prev[1] = JT[2]*lam[0] + JT[3]*lam[1];
         lam[0] = l_prev[0];
         lam[1] = l_prev[1];
     }
@@ -305,15 +291,17 @@ static void verify_invariant(double omega, double h, int N,
         df_du_at(uk,     omega, A1);
         df_du_at(u_star, omega, A2);
 
+        /* Adjoint update: lambda_{k-1} = J^T * lambda_k */
         double h2 = 0.5*h, h2_2 = 0.5*h*h;
-        double M[4];
-        M[0] = 1.0 - h2*(A1[0]+A2[0]) + h2_2*(A1[0]*A2[0] + A1[2]*A2[1]);
-        M[1] =     - h2*(A1[2]+A2[2]) + h2_2*(A1[0]*A2[2] + A1[2]*A2[3]);
-        M[2] =     - h2*(A1[1]+A2[1]) + h2_2*(A1[1]*A2[0] + A1[3]*A2[1]);
-        M[3] = 1.0 - h2*(A1[3]+A2[3]) + h2_2*(A1[1]*A2[2] + A1[3]*A2[3]);
+        double JT[4];
+        JT[0] = 1.0 + h2*(A1[0]+A2[0]) + h2_2*(A1[0]*A2[0] + A1[2]*A2[1]);
+        JT[1] =       h2*(A1[2]+A2[2]) + h2_2*(A1[0]*A2[2] + A1[2]*A2[3]);
+        JT[2] =       h2*(A1[1]+A2[1]) + h2_2*(A1[1]*A2[0] + A1[3]*A2[1]);
+        JT[3] = 1.0 + h2*(A1[3]+A2[3]) + h2_2*(A1[1]*A2[2] + A1[3]*A2[3]);
 
         double l_prev[2];
-        solve_2x2(M, lam, l_prev);
+        l_prev[0] = JT[0]*lam[0] + JT[1]*lam[1];
+        l_prev[1] = JT[2]*lam[0] + JT[3]*lam[1];
         lam[0] = l_prev[0];
         lam[1] = l_prev[1];
     }
