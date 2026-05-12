@@ -1,0 +1,2 @@
+- chmod +x run.sh && ./run.sh
+- 可視化にはmatplotlibとnumpyを含む仮想環境を使う
